@@ -25,8 +25,14 @@ In any case, we will pay tribute to the author and note that all rights to `SDR#
 
 ## Screenshots
 
-<!--img src="Screenshots/image_non_HiDPI.png" width="1280" /-->
-<!--img src="Screenshots/image_HiDPI.png" width="1280" /-->
+### HiDPI mode off
+<img src="https://user-images.githubusercontent.com/26070386/203162230-c46807af-a7fb-4d27-89ce-4b86cf77eaca.png" width="1280" />
+
+### HiDPI mode on (without plugin)
+<img src="https://user-images.githubusercontent.com/26070386/203162266-6f3e0815-71b8-4651-ba1f-371aece60c3d.png" width="1280" />
+
+### HiDPI mode on (with plugin)
+<img src="https://user-images.githubusercontent.com/26070386/203162300-0457e69e-9928-4246-a6fb-1c3cba102c19.png" width="1280" />
 
 
 ## Bugs? Ideas?
