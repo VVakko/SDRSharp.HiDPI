@@ -1,17 +1,18 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Diagnostics;
 using static System.Diagnostics.Trace;
 using SDRSharp.Common;
 using SDRSharp.Radio;
-using System.Collections;
-using System.Drawing;
-using System.Reflection;
+
 
 namespace SDRSharp.HiDPI
 {
@@ -43,14 +44,14 @@ namespace SDRSharp.HiDPI
             _userControl?.Dispose();
         }
 
-        public void Initialize(ISharpControl control)
+        public void Initialize(ISharpControl controlInterface)
         {
 #if DEBUG
             //Listeners.Add(new System.Diagnostics.TextWriterTraceListener("_HiDPIPlugin.log", "HiDPIListener"));
             //AutoFlush = true;
 #endif
             TraceInformation("HiDPIPlugin()");
-            _controlInterface = control;
+            _controlInterface = controlInterface;
             _userControl = new UserControl();
             _userControl.VisibleChanged += UserControl_VisibleChanged;
             _controlInterface.RegisterFrontControl(_userControl, PluginPosition.Top);
@@ -58,7 +59,6 @@ namespace SDRSharp.HiDPI
         }
 
         #endregion
-
 
         private void UserControl_VisibleChanged(object sender, EventArgs e)
         {
@@ -85,6 +85,18 @@ namespace SDRSharp.HiDPI
             yield return root;
         }
 
+        private object GetFieldValue(object obj, string name)
+        {
+            if (name == "" || obj == null) return null;
+            return obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(obj);
+        }
+
+        private object GetPropertyValue(object obj, string name)
+        {
+            if (name == "" || obj == null) return null;
+            return obj.GetType().GetProperty(name).GetValue(obj);
+        }
+
         private string ToStringOrNull(object value)
         {
             return value != null ? value.ToString() : "null";
@@ -108,28 +120,28 @@ namespace SDRSharp.HiDPI
                     //"Audio Noise Reduction *", "IF Noise Reduction *",
                     //"Baseband Noise Blanker *", "Demodulator Noise Blanker *"
                 };
-                var _MainForm = _controlInterface.GetType().GetField("_owner", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_controlInterface);
-                //TraceInformation($"___ MainForm: {ToStringOrNull(_MainForm)}");
+
+                var _MainForm = GetFieldValue(_controlInterface, "_owner");
+                //TraceInformation($"MainForm: {ToStringOrNull(_MainForm)}");
 
                 // Remove padding from MainForm
                 var control = (Control)_MainForm;
                 control.Padding = new Padding(4);
 
                 // Reducing height of settingsTableLayoutPanel
-                control = (Control)_MainForm.GetType().GetField("settingsTableLayoutPanel", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_MainForm);
+                control = (Control)GetFieldValue(_MainForm, "settingsTableLayoutPanel");
                 control.Height -= control.Height / 3;
 
                 // Reducing width of fftRangeTableLayoutPanel
-                var panel = (Panel)_MainForm.GetType().GetField("fftRangeTableLayoutPanel", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_MainForm);
+                var panel = (Panel)GetFieldValue(_MainForm, "fftRangeTableLayoutPanel");
                 panel.AutoSize = false;
                 panel.Width = 76;
                 foreach (var _control in GetAllControls((Control)panel))
                     if (_control.Name.StartsWith("label"))
                         _control.Margin = new Padding(0);
-                        //_control.Height -= _control.Height / 3 - 24;
 
                 // Remove horizontal scrolling from left plugin list
-                panel = (Panel)_MainForm.GetType().GetField("scrollPanel", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_MainForm);
+                panel = (Panel)GetFieldValue(_MainForm, "scrollPanel");
                 panel.Padding = new Padding(0);
                 panel.Width -= 6;
                 panel.AutoScroll = false;
@@ -140,47 +152,40 @@ namespace SDRSharp.HiDPI
                 panel.AutoScroll = true;
 
                 // Process CollapsiblePanels
-                panel = (Panel)_MainForm.GetType().GetField("controlPanel", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(_MainForm);
-                var _controls = (IList)panel.GetType().GetProperty("Controls").GetValue(panel);
-                //TraceInformation($"_controls: {ToStringOrNull(_controls)}");
-                foreach (var _collapsiblePanel in _controls)
+                panel = (Panel)GetFieldValue(_MainForm, "controlPanel");
+                foreach (var _collapsiblePanel in (IList)GetPropertyValue(panel, "Controls"))
                 {
                     control = (Control)_collapsiblePanel;
-                    var _panelTitle = (string)_collapsiblePanel.GetType().GetProperty("PanelTitle").GetValue(_collapsiblePanel);
-                    //TraceInformation($"==> {ToStringOrNull(_collapsiblePanel)}:{control.Name}:{_panelTitle}");
-                    if (ResizePanelTitles_contentPanel.Contains(_panelTitle))
-                    {
-                        // Resize collapsible panels height from ResizePanelTitles_contentPanel list 
+                    var title = (string)GetPropertyValue(_collapsiblePanel, "PanelTitle");
+                    //TraceInformation($"==> {ToStringOrNull(_collapsiblePanel)}:{control.Name}:{title}");
+
+                    // Resize collapsible panels height from ResizePanelTitles_contentPanel list 
+                    if (ResizePanelTitles_contentPanel.Contains(title))
                         foreach (var _control in GetAllControls((Control)control))
                             if (_control.Name == "contentPanel")
                                 _control.Height -= _control.Height / 3 - 24;
-                    }
-                    if (ResizePanelTitles_reduce.Contains(_panelTitle))
-                    {
-                        // Resize collapsible panels height from ResizePanelTitles_reduce list 
+
+                    // Resize collapsible panels height from ResizePanelTitles_reduce list 
+                    if (ResizePanelTitles_reduce.Contains(title))
                         control.Height -= control.Height / 3;
-                    }
-                    if (ResizePanelTitles_increase.Contains(_panelTitle))
-                    {
-                        // Resize collapsible panels height from ResizePanelTitles_increase list 
+
+                    // Resize collapsible panels height from ResizePanelTitles_increase list 
+                    if (ResizePanelTitles_increase.Contains(title))
                         foreach (var _control in GetAllControls((Control)control))
                             if (_control.Name == "contentPanel")
                                 _control.Height += _control.Height / 3 + 24;
-                    }
-                    if (HidePanelTitles.Contains(_panelTitle))
-                    {
-                        // Hide collapsible panels from HidePanels list
+
+                    // Hide collapsible panels from HidePanels list
+                    if (HidePanelTitles.Contains(title))
                         foreach (var _control in GetAllControls((Control)_collapsiblePanel))
                             if (_control.Name == "titlePanel" || _control.Name == "contentPanel")
                                 _control.Height = 0;
-                    }
-                    if (_panelTitle == "Frequency Manager *")
-                    {
-                        // Fixing Frequency column width
+
+                    // Fixing Frequency column width
+                    if (title == "Frequency Manager *")
                         foreach (var _control in GetAllControls((Control)_collapsiblePanel))
                             if (_control.Name == "frequencyDataGridView")
                                 ((DataGridView)_control).Columns[1].Width = 144;
-                    }
                 }
             }
             catch (Exception ex)
